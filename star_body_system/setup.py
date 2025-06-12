@@ -9,6 +9,8 @@ setup(
         "numpy",
         "torch",
         "plotly",
+        "scipy",  # For spatial indexing (cKDTree)
+        "h5py",   # For HDF5 data export
     ],
     python_requires=">=3.7",
 )
