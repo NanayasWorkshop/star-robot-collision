@@ -6,6 +6,11 @@ star-robot-env/
 STAR/**
 !STAR/README.md
 
+legacy/cpp_extension/build/           
+legacy/cpp_extension/*.egg-info/      
+bone_collision/cpp_extension/build/     
+bone_collision/cpp_extension/*.egg-info/  
+
 # Compiled Python files
 __pycache__/
 *.pyc

@@ -1,4 +1,4 @@
-// fast_collision.cpp - High-performance FCL collision detection with refitting
+// fast_collision.cpp - v4 with correct FCL addSubModel usage
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
@@ -6,6 +6,7 @@
 #include <vector>
 #include <chrono>
 #include <memory>
+#include <iostream>
 
 namespace py = pybind11;
 using namespace fcl;
@@ -17,7 +18,6 @@ private:
     bool initialized = false;
     int num_vertices = 0;
     int num_faces = 0;
-    std::vector<int> face_indices;  // Store face indices for updates
     
 public:
     FastBVHCollider() {
@@ -43,45 +43,62 @@ public:
         double* vertices_ptr = static_cast<double*>(vertices_buf.ptr);
         int* faces_ptr = static_cast<int*>(faces_buf.ptr);
         
-        // Store face indices for updates
-        face_indices.clear();
-        face_indices.reserve(num_faces * 3);
-        for (int i = 0; i < num_faces * 3; i++) {
-            face_indices.push_back(faces_ptr[i]);
-        }
+        // Create new BVH model
+        bvh_model = std::make_shared<BVHModel<OBBRSSf>>();
         
-        // Create BVH model
-        bvh_model->beginModel(num_faces, num_vertices);
-        
-        // Add vertices
+        // Convert vertices to FCL format
+        std::vector<Vector3f> fcl_vertices;
+        fcl_vertices.reserve(num_vertices);
         for (int i = 0; i < num_vertices; i++) {
-            Vector3f vertex(
+            fcl_vertices.emplace_back(
                 static_cast<float>(vertices_ptr[i * 3 + 0]),
                 static_cast<float>(vertices_ptr[i * 3 + 1]),
                 static_cast<float>(vertices_ptr[i * 3 + 2])
             );
-            bvh_model->addVertex(vertex);
         }
         
-        // Add triangles
+        // Convert triangles to FCL format
+        std::vector<Triangle> fcl_triangles;
+        fcl_triangles.reserve(num_faces);
         for (int i = 0; i < num_faces; i++) {
-            int i0 = faces_ptr[i * 3 + 0];
-            int i1 = faces_ptr[i * 3 + 1]; 
-            int i2 = faces_ptr[i * 3 + 2];
-            bvh_model->addTriangle(
-                Vector3f(vertices_ptr[i0 * 3 + 0], vertices_ptr[i0 * 3 + 1], vertices_ptr[i0 * 3 + 2]),
-                Vector3f(vertices_ptr[i1 * 3 + 0], vertices_ptr[i1 * 3 + 1], vertices_ptr[i1 * 3 + 2]),
-                Vector3f(vertices_ptr[i2 * 3 + 0], vertices_ptr[i2 * 3 + 1], vertices_ptr[i2 * 3 + 2])
+            fcl_triangles.emplace_back(
+                faces_ptr[i * 3 + 0],
+                faces_ptr[i * 3 + 1], 
+                faces_ptr[i * 3 + 2]
             );
         }
         
-        bvh_model->endModel();
+        // Begin model creation
+        int result = bvh_model->beginModel(num_faces, num_vertices);
+        if (result != BVH_OK) {
+            std::cerr << "Failed to begin BVH model creation, error code: " << result << std::endl;
+            throw std::runtime_error("Failed to begin BVH model creation");
+        }
+        
+        // Use addSubModel for correct mesh construction with shared vertices
+        result = bvh_model->addSubModel(fcl_vertices, fcl_triangles);
+        if (result != BVH_OK) {
+            std::cerr << "Failed to add sub model, error code: " << result << std::endl;
+            throw std::runtime_error("Failed to add sub model to BVH model");
+        }
+        
+        // End model creation - this builds the BVH tree
+        result = bvh_model->endModel();
+        if (result != BVH_OK) {
+            std::cerr << "Failed to end BVH model creation, error code: " << result << std::endl;
+            throw std::runtime_error("Failed to end BVH model creation");
+        }
         
         // Create collision object
         Transform3f transform = Transform3f::Identity();
         collision_object = std::make_shared<CollisionObject<float>>(bvh_model, transform);
         
         initialized = true;
+        
+        std::cout << "Created BVH with " << num_vertices << " vertices, " << num_faces << " faces" << std::endl;
+        std::cout << "BVH build state: " << static_cast<int>(bvh_model->build_state) << std::endl;
+        std::cout << "BVH actual vertices: " << bvh_model->num_vertices << std::endl;
+        std::cout << "BVH actual triangles: " << bvh_model->num_tris << std::endl;
     }
     
     double update_vertices(py::array_t<double> vertices_array) {
@@ -96,46 +113,63 @@ public:
             throw std::runtime_error("Vertices must be (N, 3) array");
         }
         if (vertices_buf.shape[0] != num_vertices) {
+            std::cerr << "Vertex count mismatch: expected " << num_vertices 
+                      << ", got " << vertices_buf.shape[0] << std::endl;
             throw std::runtime_error("Vertex count mismatch");
         }
         
         double* vertices_ptr = static_cast<double*>(vertices_buf.ptr);
         
-        // For FCL, we need to recreate the BVH model for vertex updates
-        // This is less efficient but works with the available API
-        bvh_model = std::make_shared<BVHModel<OBBRSSf>>();
-        bvh_model->beginModel(num_faces, num_vertices);
+        // Check current build state
+        std::cout << "Current build state before update: " << static_cast<int>(bvh_model->build_state) << std::endl;
+        std::cout << "BVH internal vertex count: " << bvh_model->num_vertices << std::endl;
         
-        // Add updated vertices
+        // Step 1: Begin update model (preserves topology)
+        int result = bvh_model->beginUpdateModel();
+        if (result != BVH_OK) {
+            std::cerr << "Failed to begin BVH model update, error code: " << result << std::endl;
+            std::cerr << "Current build state: " << static_cast<int>(bvh_model->build_state) << std::endl;
+            throw std::runtime_error("Failed to begin BVH model update");
+        }
+        
+        std::cout << "Build state after beginUpdateModel: " << static_cast<int>(bvh_model->build_state) << std::endl;
+        
+        // Step 2: Update vertices using updateSubModel for efficiency
+        std::vector<Vector3f> new_vertices;
+        new_vertices.reserve(num_vertices);
+        
         for (int i = 0; i < num_vertices; i++) {
-            Vector3f vertex(
+            new_vertices.emplace_back(
                 static_cast<float>(vertices_ptr[i * 3 + 0]),
                 static_cast<float>(vertices_ptr[i * 3 + 1]),
                 static_cast<float>(vertices_ptr[i * 3 + 2])
             );
-            bvh_model->addVertex(vertex);
         }
         
-        // Re-add triangles with updated vertex positions
-        // We need to store the original face indices
-        if (!face_indices.empty()) {
-            for (size_t i = 0; i < face_indices.size(); i += 3) {
-                int i0 = face_indices[i + 0];
-                int i1 = face_indices[i + 1]; 
-                int i2 = face_indices[i + 2];
-                bvh_model->addTriangle(
-                    Vector3f(vertices_ptr[i0 * 3 + 0], vertices_ptr[i0 * 3 + 1], vertices_ptr[i0 * 3 + 2]),
-                    Vector3f(vertices_ptr[i1 * 3 + 0], vertices_ptr[i1 * 3 + 1], vertices_ptr[i1 * 3 + 2]),
-                    Vector3f(vertices_ptr[i2 * 3 + 0], vertices_ptr[i2 * 3 + 1], vertices_ptr[i2 * 3 + 2])
-                );
-            }
+        // Use updateSubModel instead of individual updateVertex calls
+        result = bvh_model->updateSubModel(new_vertices);
+        if (result != BVH_OK) {
+            std::cerr << "Failed to update vertices in BVH model, error code: " << result << std::endl;
+            throw std::runtime_error("Failed to update vertices in BVH model");
         }
         
-        bvh_model->endModel();
+        std::cout << "Build state after updateSubModel: " << static_cast<int>(bvh_model->build_state) << std::endl;
         
-        // Update collision object
+        // Step 3: End update with refitting (bottomup=true for speed)
+        result = bvh_model->endUpdateModel(true, true);  // refit=true, bottomup=true
+        if (result != BVH_OK) {
+            std::cerr << "Failed to end BVH model update, error code: " << result << std::endl;
+            std::cerr << "Build state: " << static_cast<int>(bvh_model->build_state) << std::endl;
+            std::cerr << "Number of vertices in model: " << bvh_model->num_vertices << std::endl;
+            std::cerr << "Expected vertices: " << num_vertices << std::endl;
+            throw std::runtime_error("Failed to end BVH model update");
+        }
+        
+        std::cout << "Build state after endUpdateModel: " << static_cast<int>(bvh_model->build_state) << std::endl;
+        
+        // Update collision object transform (usually stays identity)
         Transform3f transform = Transform3f::Identity();
-        collision_object = std::make_shared<CollisionObject<float>>(bvh_model, transform);
+        collision_object->setTransform(transform);
         
         auto end_time = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
@@ -197,7 +231,9 @@ public:
         // If direction is not aligned with z-axis, rotate
         if (std::abs(direction.dot(z_axis)) < 0.999f) {
             Vector3f rotation_axis = z_axis.cross(direction).normalized();
-            float angle = std::acos(z_axis.dot(direction));
+            float dot_product = z_axis.dot(direction);
+            dot_product = std::max(-1.0f, std::min(1.0f, dot_product)); // Manual clamp for C++14
+            float angle = std::acos(dot_product);
             AngleAxisf rotation(angle, rotation_axis);
             capsule_transform.linear() = rotation.toRotationMatrix();
         }
@@ -238,6 +274,22 @@ public:
     
     bool is_initialized() const {
         return initialized;
+    }
+    
+    // Debug method to get build state
+    int get_build_state() const {
+        if (!initialized) return -1;
+        return static_cast<int>(bvh_model->build_state);
+    }
+    
+    // Debug method to get BVH statistics
+    std::vector<int> get_bvh_stats() const {
+        if (!initialized) return {0, 0, 0};
+        return {
+            bvh_model->getNumBVs(),  // Number of BV nodes
+            bvh_model->num_vertices, // Actual vertex count in BVH
+            bvh_model->num_tris      // Actual triangle count in BVH
+        };
     }
 };
 
@@ -290,14 +342,14 @@ public:
 
 // Python bindings
 PYBIND11_MODULE(fast_collision, m) {
-    m.doc() = "High-performance FCL collision detection with BVH refitting";
+    m.doc() = "High-performance FCL collision detection with PROPER BVH refitting v4";
     
     py::class_<FastBVHCollider, std::shared_ptr<FastBVHCollider>>(m, "FastBVHCollider")
         .def(py::init<>())
         .def("create_from_mesh", &FastBVHCollider::create_from_mesh,
              "Create BVH from mesh vertices and faces")
         .def("update_vertices", &FastBVHCollider::update_vertices,
-             "Update BVH vertices with fast refitting. Returns update time in ms.")
+             "Update BVH vertices with PROPER FCL refitting. Returns update time in ms.")
         .def("get_bounding_box", &FastBVHCollider::get_bounding_box,
              "Get axis-aligned bounding box [min_x, min_y, min_z, max_x, max_y, max_z]")
         .def("check_collision_with_sphere", &FastBVHCollider::check_collision_with_sphere,
@@ -309,7 +361,11 @@ PYBIND11_MODULE(fast_collision, m) {
         .def("get_info", &FastBVHCollider::get_info,
              "Get [num_vertices, num_faces]")
         .def("is_initialized", &FastBVHCollider::is_initialized,
-             "Check if BVH is initialized");
+             "Check if BVH is initialized")
+        .def("get_build_state", &FastBVHCollider::get_build_state,
+             "Get current BVH build state for debugging")
+        .def("get_bvh_stats", &FastBVHCollider::get_bvh_stats,
+             "Get BVH statistics [num_bvs, actual_vertices, actual_faces]");
     
     py::class_<CollisionManager, std::shared_ptr<CollisionManager>>(m, "CollisionManager")
         .def(py::init<>())
