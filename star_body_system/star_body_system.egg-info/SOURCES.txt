@@ -1,0 +1,7 @@
+setup.py
+star_body_system.egg-info/PKG-INFO
+star_body_system.egg-info/SOURCES.txt
+star_body_system.egg-info/dependency_links.txt
+star_body_system.egg-info/requires.txt
+star_body_system.egg-info/top_level.txt
+star_body_system_pkg/__init__.py

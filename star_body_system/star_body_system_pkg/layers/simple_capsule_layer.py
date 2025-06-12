@@ -1,6 +1,6 @@
 """
 Layer 3: Simple Capsule Layer
-Generates 9 simplified capsules for fast collision detection
+Generates 9 simplified capsules that contain relevant Layer 2 capsules
 """
 
 import numpy as np
@@ -14,12 +14,13 @@ class SimpleCapsuleLayer:
         self.body_defs = BodyDefinitions()
         self.capsules = []
         
-    def generate_from_joints(self, joint_positions):
+    def generate_from_joints(self, joint_positions, capsule_layer=None):
         """
-        Generate simplified capsules from joint positions
+        Generate simplified capsules from joint positions, ensuring containment of relevant Layer 2 capsules
         
         Args:
             joint_positions: Array of joint positions (24, 3)
+            capsule_layer: CapsuleLayer instance to ensure containment of relevant capsules
             
         Returns:
             list: [(start_pos, end_pos, radius, name), ...] for each capsule
@@ -30,16 +31,113 @@ class SimpleCapsuleLayer:
             start_pos = joint_positions[start_idx]
             end_pos = joint_positions[end_idx]
             
-            # Get radius from predefined simple bone radii
-            radius = self.body_defs.DEFAULT_CAPSULE_RADII.get(bone_name, 0.08)
+            # Get base radius from predefined simple bone radii
+            base_radius = self.body_defs.DEFAULT_CAPSULE_RADII.get(bone_name, 0.08)
+            
+            # Calculate minimum radius needed to contain relevant Layer 2 capsules
+            if capsule_layer is not None:
+                required_radius = self._calculate_containment_radius_for_capsules(
+                    start_pos, end_pos, capsule_layer, bone_name
+                )
+                radius = max(base_radius, required_radius)
+            else:
+                radius = base_radius
             
             self.capsules.append((start_pos, end_pos, radius, bone_name))
         
         return self.capsules
     
-    def update_from_joints(self, joint_positions):
+    def _calculate_containment_radius_for_capsules(self, start_pos, end_pos, capsule_layer, bone_name):
+        """
+        Calculate minimum radius needed to contain all relevant Layer 2 capsules
+        
+        Args:
+            start_pos: Layer 3 capsule start position
+            end_pos: Layer 3 capsule end position
+            capsule_layer: CapsuleLayer instance
+            bone_name: Name of the Layer 3 bone this capsule represents
+            
+        Returns:
+            float: Minimum radius needed for containment
+        """
+        layer2_capsules = capsule_layer.get_capsules()
+        if not layer2_capsules:
+            return 0.08
+        
+        # Get the Layer 2 capsules that this Layer 3 capsule should contain
+        children_names = self.body_defs.get_layer3_children(bone_name)
+        if not children_names:
+            return 0.08
+        
+        # Find relevant Layer 2 capsules
+        relevant_capsules = [
+            (l2_start, l2_end, l2_radius, l2_name) for l2_start, l2_end, l2_radius, l2_name in layer2_capsules
+            if l2_name in children_names
+        ]
+        
+        if not relevant_capsules:
+            return 0.08
+        
+        max_required_radius = 0.08
+        
+        # For each Layer 2 capsule, calculate minimum Layer 3 radius needed to contain it
+        for l2_start, l2_end, l2_radius, l2_name in relevant_capsules:
+            # We need to contain the entire Layer 2 capsule (cylinder + end caps)
+            # Test both endpoints of the Layer 2 capsule
+            for l2_point in [l2_start, l2_end]:
+                distance_to_axis = self._point_to_line_distance(l2_point, start_pos, end_pos)
+                required_radius = distance_to_axis + l2_radius
+                max_required_radius = max(max_required_radius, required_radius)
+            
+            # Also test points along the Layer 2 capsule axis
+            # Sample a few points along the Layer 2 capsule
+            for t in [0.25, 0.5, 0.75]:
+                sample_point = l2_start + t * (l2_end - l2_start)
+                distance_to_axis = self._point_to_line_distance(sample_point, start_pos, end_pos)
+                required_radius = distance_to_axis + l2_radius
+                max_required_radius = max(max_required_radius, required_radius)
+        
+        # Return exact required radius (no margin)
+        return max_required_radius
+    
+    def _point_to_line_distance(self, point, line_start, line_end):
+        """
+        Calculate distance from a point to a line segment
+        
+        Args:
+            point: 3D point
+            line_start: Line segment start
+            line_end: Line segment end
+            
+        Returns:
+            float: Distance from point to line segment
+        """
+        line_vec = line_end - line_start
+        line_length = np.linalg.norm(line_vec)
+        
+        if line_length == 0:
+            # Degenerate line: distance to start point
+            return np.linalg.norm(point - line_start)
+        
+        # Normalized line direction
+        line_dir = line_vec / line_length
+        
+        # Vector from line start to point
+        point_vec = point - line_start
+        
+        # Project point onto line
+        projection_length = np.dot(point_vec, line_dir)
+        projection_length = np.clip(projection_length, 0, line_length)
+        
+        # Find closest point on line segment
+        closest_point = line_start + projection_length * line_dir
+        
+        # Return distance
+        return np.linalg.norm(point - closest_point)
+    
+    def update_from_joints(self, joint_positions, capsule_layer=None):
         """Update capsule positions from new joint positions"""
-        return self.generate_from_joints(joint_positions)
+        return self.generate_from_joints(joint_positions, capsule_layer)
     
     def get_capsules(self):
         """Get current capsule list"""

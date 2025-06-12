@@ -1,6 +1,6 @@
 """
 Body Definitions
-Contains anatomical definitions, joint names, bone connections, and layer hierarchies
+Contains anatomical definitions, joint names, bone connections, layer hierarchies, and containment mappings
 """
 
 
@@ -64,6 +64,56 @@ class BodyDefinitions:
         (19, 23, 'right_elbow-right_hand'),     # right forearm+hand
     ]
     
+    # HIERARCHICAL CONTAINMENT MAPPINGS
+    
+    # Layer 3 → Layer 2: Each Layer 3 capsule contains these Layer 2 capsules
+    LAYER3_TO_LAYER2_CONTAINMENT = {
+        'left_foot-left_knee': [
+            'left_knee-left_ankle',
+            'left_ankle-left_foot'
+        ],
+        'right_foot-right_knee': [
+            'right_knee-right_ankle', 
+            'right_ankle-right_foot'
+        ],
+        'left_knee-pelvis': [
+            'pelvis-left_hip',
+            'left_hip-left_knee'
+        ],
+        'right_knee-pelvis': [
+            'pelvis-right_hip',
+            'right_hip-right_knee'
+        ],
+        'pelvis-head': [
+            'pelvis-spine1',
+            'spine1-spine2',
+            'spine2-spine3', 
+            'spine3-neck',
+            'neck-head',
+            'spine3-left_collar',   # Collar connections belong to torso
+            'spine3-right_collar'
+        ],
+        'left_shoulder-left_elbow': [
+            'left_collar-left_shoulder',
+            'left_shoulder-left_elbow'
+        ],
+        'right_shoulder-right_elbow': [
+            'right_collar-right_shoulder', 
+            'right_shoulder-right_elbow'
+        ],
+        'left_elbow-left_hand': [
+            'left_elbow-left_wrist',
+            'left_wrist-left_hand'
+        ],
+        'right_elbow-right_hand': [
+            'right_elbow-right_wrist',
+            'right_wrist-right_hand'
+        ]
+    }
+    
+    # Layer 2 → Layer 1: Each Layer 2 capsule contains spheres with matching bone name
+    # This is handled dynamically by name matching (e.g., 'pelvis-spine1' contains all 'pelvis-spine1_X' spheres)
+    
     # Anatomical properties for Layer 1 sphere generation
     BONE_DEFINITIONS = {
         # Core/Torso - Large spheres
@@ -100,9 +150,9 @@ class BodyDefinitions:
         'right_wrist-right_hand': {'start_radius': 0.035, 'end_radius': 0.04, 'type': 'hand', 'min_overlap': 0.4},
     }
     
-    # Default capsule radii for layers 2 and 3
+    # Default capsule radii for layers 2 and 3 (starting points - will be adjusted for containment)
     DEFAULT_CAPSULE_RADII = {
-        # Layer 2 (detailed)
+        # Layer 2 (detailed) - starting radii
         'torso': 0.11,
         'head': 0.07,
         'leg_upper': 0.085,
@@ -113,7 +163,7 @@ class BodyDefinitions:
         'arm_lower': 0.045,
         'hand': 0.035,
         
-        # Layer 3 (simplified) - must contain Layer 2
+        # Layer 3 (simplified) - starting radii (will grow to contain Layer 2)
         'pelvis-head': 0.15,           # Contains entire torso
         'left_foot-left_knee': 0.08,   # Contains lower leg
         'right_foot-right_knee': 0.08,
@@ -137,3 +187,14 @@ class BodyDefinitions:
     def get_bone_definition(cls, bone_name):
         """Get bone definition by name"""
         return cls.BONE_DEFINITIONS.get(bone_name)
+    
+    @classmethod
+    def get_layer3_children(cls, layer3_name):
+        """Get Layer 2 capsules that should be contained by this Layer 3 capsule"""
+        return cls.LAYER3_TO_LAYER2_CONTAINMENT.get(layer3_name, [])
+    
+    @classmethod
+    def get_layer2_children(cls, layer2_name):
+        """Get Layer 1 sphere name prefix that should be contained by this Layer 2 capsule"""
+        # Layer 2 contains all spheres with matching bone name
+        return layer2_name  # e.g., 'pelvis-spine1' contains all 'pelvis-spine1_X' spheres
