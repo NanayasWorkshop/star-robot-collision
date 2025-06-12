@@ -1,0 +1,50 @@
+Project Setup Commands
+bash# 1. Initial setup
+cd ~/Documents/star-robot-collision
+source star-robot-env/bin/activate
+
+# 2. Install C++ dependencies
+sudo apt-get update
+sudo apt-get install -y build-essential cmake pkg-config
+sudo apt-get install -y libfcl-dev libeigen3-dev libccd-dev liboctomap-dev
+
+# 3. Install Python dependencies
+pip install setuptools wheel pybind11[global]
+C++ Extension Build
+bash# 4. Create C++ extension
+mkdir -p cpp_extension
+cd cpp_extension
+
+# Save these artifacts as files:
+# - fast_collision.cpp (1st artifact)
+# - setup.py (2nd artifact) 
+
+# 5. Build and install
+rm -rf build/ dist/ *.egg-info/ *.so
+python setup.py build_ext --inplace
+pip install .
+
+
+rm -rf build/ *.so
+python setup.py build_ext --inplace
+pip install . --force-reinstall
+
+# 6. Test C++ extension
+python -c "
+import fast_collision
+collider = fast_collision.FastBVHCollider()
+manager = fast_collision.CollisionManager()
+print('✅ C++ extension works!')
+"
+Hybrid System Setup
+bash# 7. Setup hybrid system
+cd ~/Documents/star-robot-collision
+
+# Save hybrid_collision.py (3rd artifact) to src/hybrid_collision.py
+
+# 8. Test hybrid system
+python -c "
+import sys; sys.path.append('src')
+from hybrid_collision import test_hybrid_system
+test_hybrid_system()
+"

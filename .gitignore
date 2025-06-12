@@ -1,0 +1,36 @@
+# Build directories
+build/
+cpp_extension/build/
+cpp_extension/fast_collision.egg-info/
+star-robot-env/
+STAR/**
+!STAR/README.md
+
+# Compiled Python files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Compiled C++ files
+*.o
+*.so
+*.a
+*.exe
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
