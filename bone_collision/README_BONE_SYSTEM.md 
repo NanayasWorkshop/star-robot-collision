@@ -277,7 +277,10 @@ def query_collision(self, mini_bvh, snake_segment):
 ### Functional Requirements
 - ✅ **Closest point queries**: Accurate surface contact points
 - ✅ **Surface normals**: Correct direction vectors for contact
-- ✅ **Multi-segment support**: Handle entire snake robot simultaneously
+- ✅ **Multi-segment support**: Handle e
+│   │   ├── bone_collision.py        # Main system
+│   │   ├── star_bone_extractor.py   # STAR skinning weights processing
+│   │   └── spatial_filter.py        # Bone-based spatial filtentire snake robot simultaneously
 - ✅ **Real-time human updates**: Support dynamic STAR pose changes
 
 ## Recommended File Structure
