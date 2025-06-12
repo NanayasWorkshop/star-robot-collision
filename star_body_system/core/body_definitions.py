@@ -1,0 +1,139 @@
+"""
+Body Definitions
+Contains anatomical definitions, joint names, bone connections, and layer hierarchies
+"""
+
+
+class BodyDefinitions:
+    """Anatomical definitions for multi-layer body representation"""
+    
+    # STAR joint names (24 joints)
+    JOINT_NAMES = [
+        'pelvis', 'left_hip', 'right_hip', 'spine1', 'left_knee', 'right_knee',
+        'spine2', 'left_ankle', 'right_ankle', 'spine3', 'left_foot', 'right_foot',
+        'neck', 'left_collar', 'right_collar', 'head', 'left_shoulder', 'right_shoulder',
+        'left_elbow', 'right_elbow', 'left_wrist', 'right_wrist', 'left_hand', 'right_hand'
+    ]
+    
+    # Layer 2: 24 bone connections (detailed anatomical)
+    DETAILED_BONES = [
+        (0, 3, 'pelvis-spine1'),
+        (3, 6, 'spine1-spine2'),  
+        (6, 9, 'spine2-spine3'),
+        (9, 12, 'spine3-neck'),
+        (12, 15, 'neck-head'),
+        
+        (0, 1, 'pelvis-left_hip'),
+        (1, 4, 'left_hip-left_knee'),
+        (4, 7, 'left_knee-left_ankle'),
+        (7, 10, 'left_ankle-left_foot'),
+        
+        (0, 2, 'pelvis-right_hip'),
+        (2, 5, 'right_hip-right_knee'),
+        (5, 8, 'right_knee-right_ankle'),
+        (8, 11, 'right_ankle-right_foot'),
+        
+        (9, 13, 'spine3-left_collar'),
+        (13, 16, 'left_collar-left_shoulder'),
+        (16, 18, 'left_shoulder-left_elbow'),
+        (18, 20, 'left_elbow-left_wrist'),
+        (20, 22, 'left_wrist-left_hand'),
+        
+        (9, 14, 'spine3-right_collar'),
+        (14, 17, 'right_collar-right_shoulder'),
+        (17, 19, 'right_shoulder-right_elbow'),
+        (19, 21, 'right_elbow-right_wrist'),
+        (21, 23, 'right_wrist-right_hand'),
+    ]
+    
+    # Layer 3: 9 simplified bone connections
+    SIMPLE_BONES = [
+        # Legs (4 capsules)
+        (10, 4, 'left_foot-left_knee'),    # left lower leg
+        (11, 5, 'right_foot-right_knee'),  # right lower leg  
+        (4, 0, 'left_knee-pelvis'),        # left upper leg
+        (5, 0, 'right_knee-pelvis'),       # right upper leg
+        
+        # Core (1 capsule)
+        (0, 15, 'pelvis-head'),             # entire torso
+        
+        # Arms (4 capsules)
+        (16, 18, 'left_shoulder-left_elbow'),   # left upper arm
+        (17, 19, 'right_shoulder-right_elbow'), # right upper arm
+        (18, 22, 'left_elbow-left_hand'),       # left forearm+hand
+        (19, 23, 'right_elbow-right_hand'),     # right forearm+hand
+    ]
+    
+    # Anatomical properties for Layer 1 sphere generation
+    BONE_DEFINITIONS = {
+        # Core/Torso - Large spheres
+        'pelvis-spine1': {'start_radius': 0.12, 'end_radius': 0.12, 'type': 'torso', 'min_overlap': 0.3},
+        'spine1-spine2': {'start_radius': 0.12, 'end_radius': 0.11, 'type': 'torso', 'min_overlap': 0.3},
+        'spine2-spine3': {'start_radius': 0.11, 'end_radius': 0.10, 'type': 'torso', 'min_overlap': 0.3},
+        'spine3-neck': {'start_radius': 0.10, 'end_radius': 0.08, 'type': 'torso', 'min_overlap': 0.25},
+        
+        # Head/Neck
+        'neck-head': {'start_radius': 0.06, 'end_radius': 0.08, 'type': 'head', 'min_overlap': 0.3},
+        
+        # Legs - Strong tapering with good overlap
+        'pelvis-left_hip': {'start_radius': 0.10, 'end_radius': 0.10, 'type': 'leg_upper', 'min_overlap': 0.4},
+        'left_hip-left_knee': {'start_radius': 0.10, 'end_radius': 0.07, 'type': 'leg_upper', 'min_overlap': 0.35},
+        'left_knee-left_ankle': {'start_radius': 0.07, 'end_radius': 0.04, 'type': 'leg_lower', 'min_overlap': 0.35},
+        'left_ankle-left_foot': {'start_radius': 0.04, 'end_radius': 0.04, 'type': 'foot', 'min_overlap': 0.4},
+        
+        'pelvis-right_hip': {'start_radius': 0.10, 'end_radius': 0.10, 'type': 'leg_upper', 'min_overlap': 0.4},
+        'right_hip-right_knee': {'start_radius': 0.10, 'end_radius': 0.07, 'type': 'leg_upper', 'min_overlap': 0.35},
+        'right_knee-right_ankle': {'start_radius': 0.07, 'end_radius': 0.04, 'type': 'leg_lower', 'min_overlap': 0.35},
+        'right_ankle-right_foot': {'start_radius': 0.04, 'end_radius': 0.04, 'type': 'foot', 'min_overlap': 0.4},
+        
+        # Arms - Strong tapering with excellent overlap
+        'spine3-left_collar': {'start_radius': 0.09, 'end_radius': 0.08, 'type': 'shoulder', 'min_overlap': 0.3},
+        'left_collar-left_shoulder': {'start_radius': 0.08, 'end_radius': 0.07, 'type': 'shoulder', 'min_overlap': 0.3},
+        'left_shoulder-left_elbow': {'start_radius': 0.07, 'end_radius': 0.05, 'type': 'arm_upper', 'min_overlap': 0.4},
+        'left_elbow-left_wrist': {'start_radius': 0.05, 'end_radius': 0.035, 'type': 'arm_lower', 'min_overlap': 0.4},
+        'left_wrist-left_hand': {'start_radius': 0.035, 'end_radius': 0.04, 'type': 'hand', 'min_overlap': 0.4},
+        
+        'spine3-right_collar': {'start_radius': 0.09, 'end_radius': 0.08, 'type': 'shoulder', 'min_overlap': 0.3},
+        'right_collar-right_shoulder': {'start_radius': 0.08, 'end_radius': 0.07, 'type': 'shoulder', 'min_overlap': 0.3},
+        'right_shoulder-right_elbow': {'start_radius': 0.07, 'end_radius': 0.05, 'type': 'arm_upper', 'min_overlap': 0.4},
+        'right_elbow-right_wrist': {'start_radius': 0.05, 'end_radius': 0.035, 'type': 'arm_lower', 'min_overlap': 0.4},
+        'right_wrist-right_hand': {'start_radius': 0.035, 'end_radius': 0.04, 'type': 'hand', 'min_overlap': 0.4},
+    }
+    
+    # Default capsule radii for layers 2 and 3
+    DEFAULT_CAPSULE_RADII = {
+        # Layer 2 (detailed)
+        'torso': 0.11,
+        'head': 0.07,
+        'leg_upper': 0.085,
+        'leg_lower': 0.055,
+        'foot': 0.04,
+        'shoulder': 0.075,
+        'arm_upper': 0.06,
+        'arm_lower': 0.045,
+        'hand': 0.035,
+        
+        # Layer 3 (simplified) - must contain Layer 2
+        'pelvis-head': 0.15,           # Contains entire torso
+        'left_foot-left_knee': 0.08,   # Contains lower leg
+        'right_foot-right_knee': 0.08,
+        'left_knee-pelvis': 0.12,      # Contains upper leg
+        'right_knee-pelvis': 0.12,
+        'left_shoulder-left_elbow': 0.08,   # Contains upper arm
+        'right_shoulder-right_elbow': 0.08,
+        'left_elbow-left_hand': 0.06,       # Contains forearm+hand
+        'right_elbow-right_hand': 0.06,
+    }
+    
+    @classmethod
+    def get_joint_index(cls, joint_name):
+        """Get index of joint by name"""
+        try:
+            return cls.JOINT_NAMES.index(joint_name)
+        except ValueError:
+            raise ValueError(f"Unknown joint name: {joint_name}")
+    
+    @classmethod
+    def get_bone_definition(cls, bone_name):
+        """Get bone definition by name"""
+        return cls.BONE_DEFINITIONS.get(bone_name)
