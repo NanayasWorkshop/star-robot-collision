@@ -1,108 +1,93 @@
 #!/usr/bin/env python3
 """
-Diagnostic: Find missing capsule
-Compare expected bones vs generated capsules
+Diagnostic: Visualize uncovered vertices
+Shows all vertices (green) and uncovered vertices (red)
 """
 
 import numpy as np
 import plotly.graph_objects as go
 from star_body_system_pkg.core.star_interface import STARInterface
-from star_body_system_pkg.core.body_definitions import BodyDefinitions
+from star_body_system_pkg.core.collision_mapping import VertexSphereMapper
 from star_body_system_pkg.layers.sphere_layer import SphereLayer
-from star_body_system_pkg.layers.capsule_layer import CapsuleLayer
 
 def main():
-    # Load data
+    # Load STAR data
     star = STARInterface(gender='neutral')
     vertices, joints = star.get_neutral_pose()
-    body_defs = BodyDefinitions()
     
-    # Generate layers
+    # Generate spheres
     sphere_layer = SphereLayer()
     spheres = sphere_layer.generate_from_joints(joints, vertices)
     
-    capsule_layer = CapsuleLayer()
-    capsules = capsule_layer.generate_from_joints(joints, sphere_layer)
+    # Get vertex assignments
+    mapper = VertexSphereMapper()
+    vertex_mapping = mapper.assign_vertices_to_spheres(vertices, spheres)
     
-    # Expected vs actual
-    expected_bones = [bone_name for _, _, bone_name in body_defs.DETAILED_BONES]
-    generated_capsules = [name for _, _, _, name in capsules]
+    # Find uncovered vertices
+    uncovered_indices = []
+    for vertex_idx in range(len(vertices)):
+        assignments = vertex_mapping.get(vertex_idx, [])
+        if len(assignments) == 0:
+            uncovered_indices.append(vertex_idx)
     
-    print(f"Expected bones: {len(expected_bones)}")
-    print(f"Generated capsules: {len(generated_capsules)}")
+    print(f"Found {len(uncovered_indices)} uncovered vertices")
     
-    # Find missing
-    missing = set(expected_bones) - set(generated_capsules)
-    extra = set(generated_capsules) - set(expected_bones)
-    
-    print(f"\nMissing capsules: {missing}")
-    print(f"Extra capsules: {extra}")
-    
-    # Check bone definitions
-    print(f"\nBone definition check:")
-    for bone_name in expected_bones:
-        has_def = bone_name in body_defs.BONE_DEFINITIONS
-        print(f"  {bone_name}: {'✓' if has_def else '✗'}")
-        if not has_def:
-            print(f"    ^^^ MISSING BONE DEFINITION")
-    
-    # Transform coordinates
+    # Transform coordinates (Y-up to Z-up)
     def transform_coords(points):
         transformed = points.copy()
-        transformed[:, [1, 2]] = transformed[:, [2, 1]]
-        transformed[:, 1] *= -1
+        transformed[:, [1, 2]] = transformed[:, [2, 1]]  # Swap Y and Z
+        transformed[:, 1] *= -1  # Flip Y
         return transformed
     
-    joints_transformed = transform_coords(joints)
+    vertices_transformed = transform_coords(vertices)
     
-    # Visualize expected vs generated
+    # Create plot
     fig = go.Figure()
     
-    # Expected bones (blue lines)
-    for start_idx, end_idx, bone_name in body_defs.DETAILED_BONES:
-        start_pos = joints_transformed[start_idx]
-        end_pos = joints_transformed[end_idx]
+    # Add spheres first (Layer 1)
+    for center, radius, name in spheres:
+        center_transformed = transform_coords(center.reshape(1, -1))[0]
         
-        color = 'red' if bone_name in missing else 'blue'
+        # Create sphere surface (low resolution for performance)
+        u = np.linspace(0, 2 * np.pi, 8)
+        v = np.linspace(0, np.pi, 8)
+        x = radius * np.outer(np.cos(u), np.sin(v)) + center_transformed[0]
+        y = radius * np.outer(np.sin(u), np.sin(v)) + center_transformed[1]
+        z = radius * np.outer(np.ones(np.size(u)), np.cos(v)) + center_transformed[2]
         
-        fig.add_trace(go.Scatter3d(
-            x=[start_pos[0], end_pos[0]],
-            y=[start_pos[1], end_pos[1]], 
-            z=[start_pos[2], end_pos[2]],
-            mode='lines',
-            line=dict(color=color, width=6),
-            name=f"Expected: {bone_name}",
-            showlegend=True if bone_name in missing else False
-        ))
-    
-    # Generated capsules (green lines)
-    for start_pos, end_pos, radius, name in capsules:
-        start_transformed = transform_coords(start_pos.reshape(1, -1))[0]
-        end_transformed = transform_coords(end_pos.reshape(1, -1))[0]
-        
-        fig.add_trace(go.Scatter3d(
-            x=[start_transformed[0], end_transformed[0]],
-            y=[start_transformed[1], end_transformed[1]],
-            z=[start_transformed[2], end_transformed[2]], 
-            mode='lines',
-            line=dict(color='green', width=4),
-            name=f"Generated: {name}",
+        fig.add_trace(go.Surface(
+            x=x, y=y, z=z,
+            colorscale=[[0, 'lightblue'], [1, 'lightblue']],
+            showscale=False,
+            name=f'Sphere_{name}',
+            opacity=0.3,
             showlegend=False
         ))
     
-    # Joints
+    # All vertices in green
     fig.add_trace(go.Scatter3d(
-        x=joints_transformed[:, 0],
-        y=joints_transformed[:, 1],
-        z=joints_transformed[:, 2],
-        mode='markers+text',
-        marker=dict(size=8, color='orange'),
-        text=[f'{i}' for i in range(len(joints))],
-        name='Joints'
+        x=vertices_transformed[:, 0],
+        y=vertices_transformed[:, 1], 
+        z=vertices_transformed[:, 2],
+        mode='markers',
+        marker=dict(size=2, color='green', opacity=0.6),
+        name=f'Covered vertices ({len(vertices) - len(uncovered_indices)})'
     ))
     
+    # Uncovered vertices in red
+    if uncovered_indices:
+        uncovered_verts = vertices_transformed[uncovered_indices]
+        fig.add_trace(go.Scatter3d(
+            x=uncovered_verts[:, 0],
+            y=uncovered_verts[:, 1],
+            z=uncovered_verts[:, 2],
+            mode='markers',
+            marker=dict(size=4, color='red', opacity=1.0),
+            name=f'Uncovered vertices ({len(uncovered_indices)})'
+        ))
+    
     fig.update_layout(
-        title=f"Expected: {len(expected_bones)} bones, Generated: {len(generated_capsules)} capsules",
+        title=f"Vertex Coverage: {len(uncovered_indices)} uncovered vertices",
         scene=dict(aspectratio=dict(x=1, y=1, z=1), aspectmode='data'),
         width=1200, height=900
     )
