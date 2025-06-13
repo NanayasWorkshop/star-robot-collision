@@ -1,6 +1,7 @@
 """
 Body Definitions
 Contains anatomical definitions, joint names, bone connections, layer hierarchies, and containment mappings
+Updated with optimized sphere parameters for tighter mesh fit
 """
 
 
@@ -114,40 +115,40 @@ class BodyDefinitions:
     # Layer 2 → Layer 1: Each Layer 2 capsule contains spheres with matching bone name
     # This is handled dynamically by name matching (e.g., 'pelvis-spine1' contains all 'pelvis-spine1_X' spheres)
     
-    # Anatomical properties for Layer 1 sphere generation
+    # Anatomical properties for Layer 1 sphere generation - OPTIMIZED for tighter fit
     BONE_DEFINITIONS = {
-        # Core/Torso - Large spheres
-        'pelvis-spine1': {'start_radius': 0.12, 'end_radius': 0.12, 'type': 'torso', 'min_overlap': 0.3},
-        'spine1-spine2': {'start_radius': 0.12, 'end_radius': 0.11, 'type': 'torso', 'min_overlap': 0.3},
-        'spine2-spine3': {'start_radius': 0.11, 'end_radius': 0.10, 'type': 'torso', 'min_overlap': 0.3},
-        'spine3-neck': {'start_radius': 0.10, 'end_radius': 0.08, 'type': 'torso', 'min_overlap': 0.25},
+        # Core/Torso - Smaller spheres, more density
+        'pelvis-spine1': {'start_radius': 0.08, 'end_radius': 0.08, 'type': 'torso', 'min_overlap': 0.2},
+        'spine1-spine2': {'start_radius': 0.08, 'end_radius': 0.07, 'type': 'torso', 'min_overlap': 0.2},
+        'spine2-spine3': {'start_radius': 0.07, 'end_radius': 0.07, 'type': 'torso', 'min_overlap': 0.2},
+        'spine3-neck': {'start_radius': 0.07, 'end_radius': 0.06, 'type': 'torso', 'min_overlap': 0.2},
         
-        # Head/Neck
-        'neck-head': {'start_radius': 0.06, 'end_radius': 0.08, 'type': 'head', 'min_overlap': 0.3},
+        # Head/Neck - Keep similar
+        'neck-head': {'start_radius': 0.06, 'end_radius': 0.08, 'type': 'head', 'min_overlap': 0.25},
         
-        # Legs - Strong tapering with good overlap
-        'pelvis-left_hip': {'start_radius': 0.10, 'end_radius': 0.10, 'type': 'leg_upper', 'min_overlap': 0.4},
-        'left_hip-left_knee': {'start_radius': 0.10, 'end_radius': 0.07, 'type': 'leg_upper', 'min_overlap': 0.35},
-        'left_knee-left_ankle': {'start_radius': 0.07, 'end_radius': 0.04, 'type': 'leg_lower', 'min_overlap': 0.35},
-        'left_ankle-left_foot': {'start_radius': 0.04, 'end_radius': 0.04, 'type': 'foot', 'min_overlap': 0.4},
+        # Legs - Much smaller spheres, higher density
+        'pelvis-left_hip': {'start_radius': 0.07, 'end_radius': 0.07, 'type': 'leg_upper', 'min_overlap': 0.25},
+        'left_hip-left_knee': {'start_radius': 0.07, 'end_radius': 0.05, 'type': 'leg_upper', 'min_overlap': 0.25},
+        'left_knee-left_ankle': {'start_radius': 0.05, 'end_radius': 0.035, 'type': 'leg_lower', 'min_overlap': 0.25},
+        'left_ankle-left_foot': {'start_radius': 0.035, 'end_radius': 0.04, 'type': 'foot', 'min_overlap': 0.3},
         
-        'pelvis-right_hip': {'start_radius': 0.10, 'end_radius': 0.10, 'type': 'leg_upper', 'min_overlap': 0.4},
-        'right_hip-right_knee': {'start_radius': 0.10, 'end_radius': 0.07, 'type': 'leg_upper', 'min_overlap': 0.35},
-        'right_knee-right_ankle': {'start_radius': 0.07, 'end_radius': 0.04, 'type': 'leg_lower', 'min_overlap': 0.35},
-        'right_ankle-right_foot': {'start_radius': 0.04, 'end_radius': 0.04, 'type': 'foot', 'min_overlap': 0.4},
+        'pelvis-right_hip': {'start_radius': 0.07, 'end_radius': 0.07, 'type': 'leg_upper', 'min_overlap': 0.25},
+        'right_hip-right_knee': {'start_radius': 0.07, 'end_radius': 0.05, 'type': 'leg_upper', 'min_overlap': 0.25},
+        'right_knee-right_ankle': {'start_radius': 0.05, 'end_radius': 0.035, 'type': 'leg_lower', 'min_overlap': 0.25},
+        'right_ankle-right_foot': {'start_radius': 0.035, 'end_radius': 0.04, 'type': 'foot', 'min_overlap': 0.3},
         
-        # Arms - Strong tapering with excellent overlap
-        'spine3-left_collar': {'start_radius': 0.09, 'end_radius': 0.08, 'type': 'shoulder', 'min_overlap': 0.3},
-        'left_collar-left_shoulder': {'start_radius': 0.08, 'end_radius': 0.07, 'type': 'shoulder', 'min_overlap': 0.3},
-        'left_shoulder-left_elbow': {'start_radius': 0.07, 'end_radius': 0.05, 'type': 'arm_upper', 'min_overlap': 0.4},
-        'left_elbow-left_wrist': {'start_radius': 0.05, 'end_radius': 0.035, 'type': 'arm_lower', 'min_overlap': 0.4},
-        'left_wrist-left_hand': {'start_radius': 0.035, 'end_radius': 0.04, 'type': 'hand', 'min_overlap': 0.4},
+        # Arms - Slightly smaller, keep similar overlap
+        'spine3-left_collar': {'start_radius': 0.08, 'end_radius': 0.07, 'type': 'shoulder', 'min_overlap': 0.25},
+        'left_collar-left_shoulder': {'start_radius': 0.07, 'end_radius': 0.06, 'type': 'shoulder', 'min_overlap': 0.25},
+        'left_shoulder-left_elbow': {'start_radius': 0.06, 'end_radius': 0.045, 'type': 'arm_upper', 'min_overlap': 0.3},
+        'left_elbow-left_wrist': {'start_radius': 0.045, 'end_radius': 0.035, 'type': 'arm_lower', 'min_overlap': 0.3},
+        'left_wrist-left_hand': {'start_radius': 0.035, 'end_radius': 0.04, 'type': 'hand', 'min_overlap': 0.3},
         
-        'spine3-right_collar': {'start_radius': 0.09, 'end_radius': 0.08, 'type': 'shoulder', 'min_overlap': 0.3},
-        'right_collar-right_shoulder': {'start_radius': 0.08, 'end_radius': 0.07, 'type': 'shoulder', 'min_overlap': 0.3},
-        'right_shoulder-right_elbow': {'start_radius': 0.07, 'end_radius': 0.05, 'type': 'arm_upper', 'min_overlap': 0.4},
-        'right_elbow-right_wrist': {'start_radius': 0.05, 'end_radius': 0.035, 'type': 'arm_lower', 'min_overlap': 0.4},
-        'right_wrist-right_hand': {'start_radius': 0.035, 'end_radius': 0.04, 'type': 'hand', 'min_overlap': 0.4},
+        'spine3-right_collar': {'start_radius': 0.08, 'end_radius': 0.07, 'type': 'shoulder', 'min_overlap': 0.25},
+        'right_collar-right_shoulder': {'start_radius': 0.07, 'end_radius': 0.06, 'type': 'shoulder', 'min_overlap': 0.25},
+        'right_shoulder-right_elbow': {'start_radius': 0.06, 'end_radius': 0.045, 'type': 'arm_upper', 'min_overlap': 0.3},
+        'right_elbow-right_wrist': {'start_radius': 0.045, 'end_radius': 0.035, 'type': 'arm_lower', 'min_overlap': 0.3},
+        'right_wrist-right_hand': {'start_radius': 0.035, 'end_radius': 0.04, 'type': 'hand', 'min_overlap': 0.3},
     }
     
     # Default capsule radii for layers 2 and 3 (starting points - will be adjusted for containment)
