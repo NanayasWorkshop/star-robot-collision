@@ -48,3 +48,45 @@ import sys; sys.path.append('src')
 from hybrid_collision import test_hybrid_system
 test_hybrid_system()
 "
+
+
+
+
+star_body_system/
+├── __init__.py
+├── core/
+│   ├── __init__.py
+│   ├── star_interface.py          # STAR model wrapper & full mesh generation
+│   ├── body_definitions.py        # Joint names, bone connections, anatomical data
+│   └── vertex_mapping.py          # Vertex-to-sphere/region assignments
+├── tracking/
+│   ├── __init__.py
+│   ├── camera_interface.py        # Camera input handling
+│   ├── pose_tracker.py           # MediaPipe/OpenPose wrapper
+│   └── joint_processor.py        # Joint position filtering/smoothing
+├── layers/
+│   ├── __init__.py
+│   ├── base_layer.py             # Abstract base class
+│   ├── mesh_layer.py             # Layer 0: STAR mesh (full or regional)
+│   ├── sphere_layer.py           # Layer 1: 70-80 spheres from joints
+│   ├── capsule_layer.py          # Layer 2: 24 capsules from joints
+│   └── simplified_capsule_layer.py # Layer 3: 9 capsules from joints
+├── collision/
+│   ├── __init__.py
+│   ├── hierarchy_manager.py      # Multi-layer collision testing
+│   ├── collision_primitives.py   # Sphere/capsule math
+│   └── adaptive_mesh_loader.py   # Smart vertex subset loading
+├── cpp_backend/                  # Optional C++ acceleration
+│   ├── __init__.py
+│   ├── bindings.py              # pybind11 wrapper
+│   └── src/                     # C++ collision code
+├── visualization/
+│   ├── __init__.py
+│   ├── layer_visualizer.py      # Individual layer rendering
+│   ├── multi_layer_viz.py       # Combined visualization
+│   └── real_time_viz.py         # Live camera + collision view
+└── examples/
+    ├── basic_usage.py
+    ├── real_time_demo.py         # Camera → tracking → collision
+    ├── collision_benchmark.py
+    └── layer_comparison.py
